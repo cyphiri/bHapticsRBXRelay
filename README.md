@@ -1895,3 +1895,5 @@ https://youtube.com/@Dteyn
 Finally, if you found this project useful and feel like sending a few bucks my way, I also have a Ko-Fi page here: https://ko-fi.com/Dteyn
 
 #### Make it a great day! :)
+
+You are visitor: ![Page views](https://dteyn-rad-page.netlify.app/.netlify/functions/pageviews?repo=bHapticsRelay)
