@@ -1,5 +1,6 @@
-﻿// bHapticsRelay v0.3.0
-// Date: 9/02/2025
+﻿// bHapticsRelay v0.3.1
+// Date: 5/26/2025
+// https://github.com/Dteyn/bHapticsRelay
 
 // TODO: General cleanup and organization, docstrings consistency, etc
 
@@ -28,7 +29,7 @@ namespace bHapticsRelay
 {
     public partial class MainWindow : Window, IDisposable
     {
-        private const string AboutInfo = "bHapticsRelay v0.3.0 by Dteyn";
+        private const string AboutInfo = "bHapticsRelay v0.3.1 by Dteyn";
 
         // services & config
         IConfigurationRoot? _cfg;
