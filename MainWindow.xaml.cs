@@ -590,7 +590,7 @@ namespace bHapticsRelay
                     var m = _bhTag.Match(line);  // look for [bHaptics] entry in log file
                     if (m.Success)
                     {
-                        string cmd = m.Groups[1].Value.TrimStart(',', ' ', '\t');
+                        string cmd = m.Groups[1].Value.TrimStart(',', ' ', '\t').TrimEnd();
                         Log.Debug("  -> Matched bHaptics cmd: {Cmd}", cmd);
                         ProcessLine(cmd);
                     }
@@ -1517,7 +1517,7 @@ namespace bHapticsRelay
 
         // Regex for matching [bHaptics] commands in log files
         private static readonly Regex _bhTag =
-            new Regex(@"\[bHaptics\]\s*(.*)", RegexOptions.Compiled);
+    		new Regex(@"\[bHaptics\]\s*(.*?)(?:""\s*$|$)", RegexOptions.Compiled);
 
         // Helper functions
 
