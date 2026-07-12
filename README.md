@@ -1,3 +1,5 @@
+# To be changed to be different from regular bHapticsRelay!
+
 # bHapticsRelay
 
 ![logo](/assets/bHapticsRelay-logo.jpg)
