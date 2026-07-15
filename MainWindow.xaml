@@ -109,7 +109,7 @@
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="16,16,0,10">
             <Image Source="pack://application:,,,/bhaptics-logo.png" Width="120" Height="28" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
             <TextBlock x:Name="AppTitleText"
-                       Text="bHapticsRelay"
+                       Text="bHapticsRBXRelay"
                        Foreground="White"
                        FontSize="26"
                        FontWeight="Bold"
@@ -158,13 +158,22 @@
                              Foreground="#eaeaea"
                              BorderBrush="#444"
                              ToolTip="{Binding Text, RelativeSource={RelativeSource Self}}"/>
-                        <Button 
+                    <Button 
                             Content="Browse..."
                             Style="{StaticResource BrowseButtonStyle}"
                             Width="80" 
                             Height="28" 
                             FontSize="15" 
                             Click="BrowseButton_Click"/>
+                    <Button
+                            x:Name="AutoDetectButton"
+                            Content="Auto-detect"
+                            Style="{StaticResource BrowseButtonStyle}"
+                            Width="100"
+                            Height="28"
+                            FontSize="15"
+                            Margin="6,0,0,0"
+                            Click="AutoDetectButton_Click"/>
                 </StackPanel>
             </StackPanel>
 

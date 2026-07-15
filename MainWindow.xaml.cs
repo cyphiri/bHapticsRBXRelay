@@ -8,19 +8,13 @@ using Fleck;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Win32;
 using Serilog;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Timers;
 using System.Windows;
 using System.Windows.Media;
 using tact_csharp2;
@@ -116,6 +110,132 @@ namespace bHapticsRelay
                 Log.Information("Switched to new log file: {LogFile}", _logFile);
             }
         }
+
+        // Autodetect handler - the most unstable part of this all. This needs to be trimmed and optimized.
+        // Grabs 2 of the most recent logs then hopefully will choose whichever outputs "[bHaptics] Client loaded"
+        private void AutoDetectButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var logsDir = Path.Combine(localAppData, "Roblox", "Logs");
+
+                if (!Directory.Exists(logsDir))
+                {
+                    MessageBox.Show($"Roblox logs folder not found:\n{logsDir}", "Auto-detect failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                var candidates = Directory.GetFiles(logsDir, "*.log")
+                                          .Select(p => new FileInfo(p))
+                                          .OrderByDescending(fi => fi.LastWriteTimeUtc)
+                                          .Take(2)
+                                          .ToArray();
+
+                if (candidates.Length == 0)
+                {
+                    MessageBox.Show($"No .log files found in:\n{logsDir}", "Auto-detect failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                string? matchedPath = null;
+                const string needle = "[bHaptics] Client loaded";
+
+                foreach (var fi in candidates)
+                {
+                    // Retry a few times, may remove if redundant
+                    const int maxAttempts = 4;
+                    int attempt = 0;
+                    bool opened = false;
+
+                    while (attempt < maxAttempts && !opened)
+                    {
+                        attempt++;
+                        try
+                        {
+                            // Open with sharing (read while file is being written gwahhhh)
+                            using var fs = new FileStream(
+                                fi.FullName,
+                                FileMode.Open,
+                                FileAccess.Read,
+                                FileShare.ReadWrite | FileShare.Delete,
+                                bufferSize: 4096,
+                                FileOptions.SequentialScan);
+
+                            using var sr = new StreamReader(fs, Encoding.UTF8); // I forgot
+
+                            string? line;
+                            while ((line = sr.ReadLine()) != null)
+                            {
+                                if (line.IndexOf(needle, StringComparison.Ordinal) >= 0)
+                                {
+                                    matchedPath = fi.FullName;
+                                    break;
+                                }
+                            }
+
+                            opened = true; // successfully opened and processed
+                        }
+                        catch (IOException ioEx)
+                        {
+                            // wait then try again - pain
+                            if (attempt >= maxAttempts)
+                            {
+                                Log.Warning(ioEx, "Failed to read candidate log file {Path}", fi.FullName);
+                            }
+                            else
+                            {
+                                System.Threading.Thread.Sleep(150 * attempt);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning(ex, "Failed to read candidate log file {Path}", fi.FullName);
+                            break;
+                        }
+                    }
+
+                    if (matchedPath != null) break;
+                }
+
+
+
+                if (matchedPath == null)
+                {
+                    MessageBox.Show($"Could not find \"{needle}\" in the two most recent logs in:\n{logsDir}", "Might need to check logs manually", MessageBoxButton.OK, MessageBoxImage.Information);
+                    return;
+                }
+
+                // input test: persist chosen log file to config
+                _logPollTimer?.Stop();
+                _logPollTimer?.Dispose();
+                _logPollTimer = null;
+
+                _logFile = matchedPath;
+                LogFileTextBox.Text = _logFile;
+
+                UpdateConfigLogFile(_logFile);
+
+                _watcher?.Dispose();
+                _watcher = null;
+
+                lock (_tailSync)
+                {
+                    _lastPos = new FileInfo(_logFile).Length;
+                }
+
+                StartTailing();
+
+                Log.Information("Auto-detected log file: {LogFile}", _logFile);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Auto-detect failed");
+                MessageBox.Show($"Auto-detect failed:\n{ex.Message}", "Auto-detect failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        // input test: Auto-detect handler end
+
 
         // Required keys in the config file which are NOT optional and must be present
         private static readonly string[] _requiredKeys = new[]
@@ -240,7 +360,7 @@ namespace bHapticsRelay
             // Get app title and version
             _appTitle = _cfg["Settings:Title"]?.Trim();
             _appVersion = _cfg["Settings:Version"]?.Trim();
-            if (string.IsNullOrEmpty(_appTitle)) _appTitle = "The Win"; 
+            if (string.IsNullOrEmpty(_appTitle)) _appTitle = "The Win";
             if (string.IsNullOrEmpty(_appVersion)) _appVersion = "1.2.3";
 
             // Update the title bar and label
@@ -281,14 +401,14 @@ namespace bHapticsRelay
 
             // Read the Default Config into a JSON object
             string? defaultConfigName = _cfg["bHaptics:DefaultConfig"]?.Trim();
-            _offlineConfigJson  = null;
+            _offlineConfigJson = null;
             if (!string.IsNullOrWhiteSpace(defaultConfigName))
             {
                 var cfgPath = Path.Combine(AppContext.BaseDirectory, defaultConfigName);
                 bool exists = File.Exists(cfgPath);
                 if (exists)
                 {
-                    _offlineConfigJson  = File.ReadAllText(cfgPath);
+                    _offlineConfigJson = File.ReadAllText(cfgPath);
                 }
                 else
                 {
@@ -502,7 +622,7 @@ namespace bHapticsRelay
             // Start init if it's not in progress already
             if (result && !_initInProgress)
                 _ = StartupAsync(_lifecycleCts?.Token ?? CancellationToken.None);
-            
+
             UpdateIndicator();
         }
 
@@ -515,17 +635,17 @@ namespace bHapticsRelay
                                 "bHapticsRelay", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-                // Build an absolute path to the log file
-                var filePath = Path.IsPathRooted(_logFile)
-                ? _logFile!
-                : Path.Combine(AppContext.BaseDirectory, _logFile!);
+            // Build an absolute path to the log file
+            var filePath = Path.IsPathRooted(_logFile)
+            ? _logFile!
+            : Path.Combine(AppContext.BaseDirectory, _logFile!);
 
             // Check if log exists
             if (!File.Exists(filePath))
             {
                 Log.Error("Log file not found: {FilePath}", filePath);
                 MessageBox.Show($"Log file not found:\n{filePath}", "bHapticsRelay", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
+                return;
             }
 
             // Get path for log file
@@ -679,7 +799,8 @@ namespace bHapticsRelay
             }
 
             // Update Last command label on UI thread
-            Dispatcher.Invoke(() => {
+            Dispatcher.Invoke(() =>
+            {
                 LastCommandText.Text = $"Last command: {line.Trim()}";
             });
 
@@ -1203,7 +1324,7 @@ namespace bHapticsRelay
                     //   bool            True if device responded; otherwise, false.
                     // Example:
                     //   ping,00:11:22:33:44:55
-					// NOTE: must test if we use MAC address here or something else
+                    // NOTE: must test if we use MAC address here or something else
                     case "ping":
                         if (parts.Length < 2)
                         {
@@ -1461,7 +1582,7 @@ namespace bHapticsRelay
             BhapticsSDK2Wrapper.play(_testEvent);
             Log.Information("Tested {Event}", _testEvent);
         }
-                private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+        private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute = true });
             e.Handled = true;
@@ -1518,7 +1639,7 @@ namespace bHapticsRelay
 
         // Regex for matching [bHaptics] commands in log files
         private static readonly Regex _bhTag =
-    		new Regex(@"\[bHaptics\]\s*(.*?)(?:""\s*$|$)", RegexOptions.Compiled);
+            new Regex(@"\[bHaptics\]\s*(.*?)(?:""\s*$|$)", RegexOptions.Compiled);
 
         // Helper functions
 
