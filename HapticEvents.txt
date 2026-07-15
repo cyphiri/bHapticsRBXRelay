@@ -1,0 +1,16 @@
+Haptic Events:
+[f_ means front, b_ means back]
+
+Action:
+heartbeat	 // 0.34s - faint
+heart_failing	 // 2.48s - sporadic pulses
+
+Blunt:
+
+Sharp:
+f_slashed_down	 // 0.14s
+fb_sword_impaled // 0.36s - ... be careful not to overuse this one.
+f_bitten	 // 0.24s
+
+f_shotgun_hit	 // 0.08s
+fb_bullet_pierced // 0.20s - high caliber bullet
