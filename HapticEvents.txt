@@ -5,6 +5,9 @@ Action:
 heartbeat	 // 0.34s - faint
 heart_failing	 // 2.48s - sporadic pulses
 
+Blast:
+f_explosion_hit	 // 1.0s
+
 Blunt:
 
 Sharp:
