@@ -16,51 +16,11 @@
 ## Table of Contents
 
 - [What is bHapticsRelay?](#what-is-bhapticsrelay)
-  - [How does it work?](#how-does-it-work)
-  - [bHaptics SDK Agreement](#bhaptics-sdk-agreement)
-- [General Overview](#general-overview)
-  - [Project Scope](#project-scope)
-  - [Getting Started](#getting-started)
-  - [Architecture and Features Overview](#architecture-and-features-overview)
-  - [Offline Fallback](#offline-fallback)
-  - [Command Parsing Logic](#command-parsing-logic)
-  - [Log File Monitoring Mode](#log-file-monitoring-mode)
-  - [WebSocket Server Mode](#websocket-server-mode)
-  - [Command Handling](#command-handling)
-- [Configuration (`config.cfg`)](#configuration-configcfg)
-- [Deployment](#deployment)
-- [Compilation from Source](#compilation-from-source)
-- [Game Integration Guide](#game-integration-guide)
-  - [Log File Tailing](#log-file-tailing)
-  - [WebSocket Mode](#websocket-mode)
-- [Example Implentations](#example-implentations)
-- [Future Ideas](#future-ideas)
-- [Contributions](#contributions)
-- [Reporting Issues](#reporting-issues)
+
 - [Acknowledgements and Shout-Outs](#acknowledgements-and-shout-outs)
+
 - [Bhaptics SDK2 API Reference](#bhaptics-sdk2-api-reference)
     - [SDK Connection & Initialization](#sdk-connection--initialization)
-      - [`registryAndInit`](#registryandinit)
-      - [`registryAndInitHost`](#registryandinithost)
-      - [`wsIsConnected`](#wsisconnected)
-      - [`wsClose`](#wsclose)
-      - [`reInitMessage`](#reinitmessage)
-    - [Playback Controls](#playback-controls)
-      - [`play`](#play)
-      - [`playParam`](#playposparam)
-      - [`playDot`](#playdot)
-      - [`playWaveform`](#playwaveform)
-      - [`playPath`](#playpath)
-      - [`playWithStartTime`](#playwithstarttime)
-      - [`playLoop`](#playloop)
-      - [`pause`](#pause)
-      - [`resume`](#resume)            
-      - [`stop`](#stop)
-      - [`stopByEventId`](#stopbyeventid)
-      - [`stopAll`](#stopall)
-      - [`isPlaying`](#isplaying)
-      - [`isPlayingByRequestId`](#isplayingbyrequestid)
-      - [`isPlayingByEventId`](#isplayingbyeventid)
     - [Device and Connectivity Utilities](#device-and-connectivity-utilities)
       - [`isbHapticsConnected`](#isbhapticsconnected)
       - [`ping`](#ping)
@@ -79,28 +39,6 @@
 
 ## What is bHapticsRelay?
 
-**bHapticsRelay** is a tool for modders and developers who want to add bHaptics support to any game or app.
-
-> [!TIP]
-> If you're just looking for the SDK2 API reference, you can find it here: [**bHaptics SDK2 API reference**](https://github.com/Dteyn/bHapticsRelay?tab=readme-ov-file#bhaptics-sdk2-api-reference)
-
-## How does it work?
-
-The app works by monitoring a game's log file (or WebSocket) for haptic commands, and in turn triggering effects on bHaptics gear.
-
-As long as you can make your game or mod write lines to a log file (or send websocket messages), this tool can translate those into haptics on your bHaptics gear.
-
-No SDK integration needed - bHapticsRelay takes care of that for you!
-
-**Examples:**
-- OpenMW (Morrowind) mod prints `[bHaptics]play,magic_cast` to the game log when casting magic, triggering vest and sleeve effects.
-- A driving game writes `[bHaptics]play,car_crash` to game log when the car hits something, triggering vest vibrations.
-- An RPG game writes `play,heartbeat` over websocket when player is low on health.
-
-In each of these cases, bHapticsRelay will forward these events to the bHaptics Player.
-
-This makes it easy to integrate bHaptics support any game as long as you can control writing to log file (or websocket) based on in-game actions.
-
 ## bHaptics SDK Agreement
 
 > [!IMPORTANT]
@@ -112,27 +50,6 @@ This project is an **unofficial community-driven tool**. It is not affiliated wi
 
 For more details, see the [_Licensing Notes_](#licensing-notes) section at the end of this document.
 
-## bHaptics SDK2 Integration
-
-bHapticsRelay uses the newer **bHaptics SDK version 2** which provides some new features and enhancements vs the previous SDK1.
-
-New features in SDK2 include (but are not limited to):
-
-- New playback methods such as `playLoop`, `playParam`, and `playWaveform` which allow for greater control of haptic feedback compared to SDK1.
-
-- Functions for getting device information and status, devices connected, as well as player application management (check if player is installed / running, launch player).
-
-- Offline mode is supported via the 'Default Config' option, which bHapticsRelay supports and is detailed further down in this guide.
-
-I've also included a full [**bHaptics SDK2 API reference**](https://github.com/Dteyn/bHapticsRelay?tab=readme-ov-file#bhaptics-sdk2-api-reference) at the bottom of this document, which includes examples for using via bHapticsRelay, as well as C# examples for integrating SDK2 into other projects.
-
-# General Overview
-
-**bHapticsRelay** is meant as a tool for modders who want to add tactile feedback to games via mods or scripts. If you are comfortable editing config files and writing game scripts (ie. in Lua or similar) to output events, bHapticsRelay will allow you to trigger bHaptics feedback without writing a full plugin in C++.
-
-> [!NOTE]  
-> You are expected to be familiar with basic modding concepts and must have access to the bHaptics Developer tools (Designer and Developer Portal).
-
 ### Project Scope
 
 **bHapticsRelay** itself is a hobby project provided for free and without any warranties. It's ***not an official bHaptics product***, and it doesn't come with any game-specific profiles itself. The tool is essentially a lightweight integration layer and uses bHaptics's proprietary SDK libraries under the hood.
@@ -141,89 +58,6 @@ Modders must use the official bHaptics Designer and Developer Portal to create h
 
 Once deployed, players must use the official bHaptics Player software in conjunction with bHapticsRelay in order to feel the haptic effects.
 
-# Getting Started
-
-Before using this app, you should become familiar with the official **bHaptics SDK and Developer Documentation** to learn how everything works.
-
-> [!IMPORTANT]  
-> Take the time to read and understand the bHaptics official docs. You'll thank yourself later!
-
-### [Getting Started | bHaptics Developer](https://docs.bhaptics.com/start-here/getting-started)
-
-Nearly everything in the guide is relevant to what we're doing here; bHapticsRelay only replaces the SDK portion which is normally baked into the game itself.
-
-## Architecture and Features Overview
-
-bHapticsRelay's architecture is designed to intercept game-generated events (via log lines or network messages) and dispatch them as haptic feedback through the bHaptics SDK. The tool loads a config, listens for incoming commands from games (either by monitoring a log file or via WebSocket), and triggers the appropriate haptic events in the bHaptics Player.
-
-The general workflow of the application is:
-
-**Config Loading**: On startup, bHapticsRelay reads its `config.cfg` file to determine settings like which mode to use (log or WebSocket), file paths, network ports, and offline mode details. It also loads any offline event data if provided (see *Offline Fallback* below). This allows modders to adapt the tool to different games without recompiling.
-
-**bHaptics Player**: The relay initializes the bHaptics SDK connection using SDK2 (via `bhaptics_library.dll`). It checks if the bhaptics Player is installed and/or running. If installed but not running, a 'Launch Player' button is provided.
-
-**Registration**: Once initialized, the app registers the haptic events either via an online API call (using your App ID/API key) or via a local JSON file (offline mode).
-
-**Tail/Listen for Events**: After registration, the tool then begins tailing the log or listening on websocket, and in turn will send commands to the Player to play specific feedback patterns.
-
-**Modes Supported**: Currently, bHapticsRelay supports two input methods for receiving haptic commands from games. More methods may be added in the future.
-
-- **Log File Tailing Mode**: In this mode, the relay monitors a specified text log file in real-time. It searches each new line for the token `[bHaptics]command`. If a line contains `[bHaptics]command`, the relay will interpret this as a haptic trigger.
-
-- **WebSocket Server Mode**: In this mode, the relay hosts an internal WebSocket server and listens for incoming commands. Game mods or external scripts can connect to this WebSocket (e.g. `ws://127.0.0.1:50451`) and send commands to trigger haptics.
-
-The WebSocket server also sends replies with return values, allowing for two-way communication with bHaptics Player. This is useful if the modding environment has networking support or if you prefer a direct programmatic approach instead of writing to a log file.
-
-**Haptic Event Dispatch**: Whether an event command comes from the tail log or the WebSocket, the relay handles it the same way: it parses the event name and any parameters and calls the appropriate bHaptics SDK function. Events are identified by their Event ID (a string name, like `heartbeat`) which must match an event in your bHaptics app configuration in the Developer Portal.
-
-Modders can refer to the **bHaptics SDK2 API Reference** at the bottom of this document for details on all the commands supported, and how to use them.
-
-A [**Test Suite**](#test-suite) is also provided which allows modders to test bHapticsRelay and become familiar with the various functions that SDK2 offers.
-
-**Player Connection & Checks**: The relay continuously ensures it has a valid connection to bHaptics Player. If the Player isn't running or if the connection is lost, bHapticsRelay will log an error or attempt to reconnect.
-
-**Debug Logging**: Debug logging statements are built into the codebase, which are normally disabled on Release version. When developing a mod, using the Debug version is recommended to obtain the most detailed logging info for setup and troubleshooting.
-
-## Offline Fallback
-
-bHaptics SDK2 supports including an offline fallback for scenarios where an internet connection is unavailable to the end user of the mod.
-
-In standard SDK2 usage, the bHaptics Player normally fetches your haptic project's event configuration from the cloud using your App ID and API key.
-
-The offline fallback bypasses any online requirement by loading a JSON config file which you can download from the bHaptics Developer Portal for your app (see "_Download Default Config_" in lower left of Dev portal).
-
-The 'Default Config' JSON contains the definitions of all haptic patterns and events in your project and allows bHapticsRelay to continue working even in cases where there is no internet connection.
-
-This is similar to providing .tact files when using SDK1 -- using the offline JSON with SDK2, the mod can be completely self-contained.
-
-## Command Parsing Logic
-
-As mentioned above, bHapticsRelay supports two modes for receiving commands: **Log File Monitoring** and **WebSocket**.
-
-### Log File Monitoring Mode
-In this mode, the relay continuously watches a specified log file. It specifically looks for log entries tagged with `[bHaptics]`. Anything following that tag is considered a Command.
-
-For example:
-
-`[bHaptics]play,explosion`
-
-When bHapticsRelay sees a tagged entry in the log, it extracts the command immediately following `[bHaptics]` - in this case, `play,explosion`.
-
-> [!NOTE]  
-> In Log File Monitoring mode, bHapticsRelay processes the commands and sends them to bHaptics Player, but doesn't return or log any feedback about the result.
-
-### WebSocket Server Mode
-In this mode, the relay can receive commands directly over WebSocket connections. In WebSocket mode, ***you do not need*** the `[bHaptics]` tag. Instead, you simply send commands directly, such as:
-
-`play,explosion`
-
-> [!TIP]
-> The WebSocket mode **does** send back results to the client after processing each command, letting you know immediately if your command succeeded or failed, or providing request ID's or data as requested.
-
-### Command Handling
-Regardless of the mode used, the parsing logic for the command handler remains consistent. The relay splits each incoming command string by commas. The first part is interpreted as the function name (like `play`, `stop`, etc.), and any remaining parts are treated as parameters.
-
-Once parsed, the command and its parameters are passed directly to the corresponding methods provided by the bHaptics SDK2 `bhaptics_library.dll`.
 
 # Configuration (`config.cfg`)
 
