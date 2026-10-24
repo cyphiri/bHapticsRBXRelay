@@ -1,8 +1,8 @@
-# To be changed to be different from regular bHapticsRelay!
+# To be changed to be more different from regular bHapticsRelay!
 
 # bHapticsRelay
 
-![logo](/assets/bHapticsRBXRelay-logo.jpg)
+![logo](/assets/bHapticsRBXRelay-logo.png)
 
 ![Latest release](https://img.shields.io/github/v/release/cyphiri/bHapticsRBXRelay?include_prereleases)
 ![Downloads](https://img.shields.io/github/downloads/cyphiri/bHapticsRBXRelay/total)
