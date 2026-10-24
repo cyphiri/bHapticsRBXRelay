@@ -1,19 +1,32 @@
-Haptic Events:
-[f_ means front, b_ means back]
+{Haptic Events}
+[f_ means front, b_ means back. fb_ or bf_ describes the side from first then later.]
 
 Action:
 heartbeat	 // 0.34s - faint
 heart_failing	 // 2.48s - sporadic pulses
 
+[Hits/impacts]
+
 Blast:
 f_explosion_hit	 // 1.0s
 
 Blunt:
+f_bat_hit	 // 0.14s - generic slam
 
 Sharp:
 f_slashed_down	 // 0.14s
 fb_sword_impaled // 0.36s - ... be careful not to overuse this one.
 f_bitten	 // 0.24s
+b_clawslashed	 // 0.25s
+f_clawslashed	 // 0.25s
+bf_torso_obliterated // 1.38s
+bf_decapitated 
 
+Bullet:
 f_shotgun_hit	 // 0.08s
 fb_bullet_pierced // 0.20s - high caliber bullet
+
+--------------------------
+
+[Camp Out Until Dawn]
+coud_wolf_backstab
